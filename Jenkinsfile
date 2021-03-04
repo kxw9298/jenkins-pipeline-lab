@@ -10,9 +10,14 @@ pipeline {
             }
 
           }
+          post {
+            success {
+              stash(name: 'Java 8', includes: 'target/**')
+            }
+
+          }
           steps {
             sh './jenkins/build.sh'
-            stash(name: 'Java 8', includes: 'target/**')
           }
         }
 
@@ -23,10 +28,15 @@ pipeline {
             }
 
           }
+          post {
+            success {
+              archiveArtifacts 'target/*.jar'
+              stash(name: 'Java 7', includes: 'target/**')
+            }
+
+          }
           steps {
             sh './jenkins/build.sh'
-            archiveArtifacts 'target/*.jar'
-            stash(name: 'Java 7', includes: 'target/**')
           }
         }
 
@@ -42,10 +52,15 @@ pipeline {
             }
 
           }
+          post {
+            always {
+              junit 'target/surefire-reports/**/TEST*.xml'
+            }
+
+          }
           steps {
             unstash 'Java 8'
             sh './jenkins/test-backend.sh'
-            junit 'target/surefire-reports/**/TEST*.xml'
           }
         }
 
@@ -56,10 +71,15 @@ pipeline {
             }
 
           }
+          post {
+            always {
+              junit 'target/test-results/**/TEST*.xml'
+            }
+
+          }
           steps {
             unstash 'Java 8'
             sh './jenkins/test-frontend.sh'
-            junit 'target/test-results/**/TEST*.xml'
           }
         }
 
@@ -96,10 +116,15 @@ pipeline {
             }
 
           }
+          post {
+            always {
+              junit 'target/surefire-reports/**/TEST*.xml'
+            }
+
+          }
           steps {
             unstash 'Java 7'
             sh './jenkins/test-backend.sh'
-            junit 'target/surefire-reports/**/TEST*.xml'
           }
         }
 
@@ -110,10 +135,15 @@ pipeline {
             }
 
           }
+          post {
+            always {
+              junit 'target/test-results/**/TEST*.xml'
+            }
+
+          }
           steps {
             unstash 'Java 7'
             sh './jenkins/test-frontend.sh'
-            junit 'target/test-results/**/TEST*.xml'
           }
         }
 
@@ -147,6 +177,9 @@ pipeline {
     }
 
     stage('Confirm Deploy') {
+      when {
+        branch 'master'
+      }
       steps {
         input(message: 'Okay to Deploy to Staging?', ok: 'Let\'s Do it!')
       }
@@ -159,11 +192,17 @@ pipeline {
         }
 
       }
+      when {
+        branch 'master'
+      }
       steps {
         unstash 'Java 7'
-        sh './jenkins/deploy.sh staging'
+        sh "./jenkins/deploy.sh ${params.DEPLOY_TO}"
       }
     }
 
+  }
+  parameters {
+    string(name: 'DEPLOY_TO', defaultValue: 'dev', description: '')
   }
 }
